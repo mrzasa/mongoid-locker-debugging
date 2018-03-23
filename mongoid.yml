@@ -1,0 +1,14 @@
+development:
+  clients:
+    default:
+      database: locker-test
+      hosts:
+        - localhost:27017
+      options:
+        max_pool_size: 1
+        truncate_logs: false
+
+        max_pool_size: 10
+        wait_queue_timeout: 10
+        connect_timeout: 10
+        socket_timeout: 10
