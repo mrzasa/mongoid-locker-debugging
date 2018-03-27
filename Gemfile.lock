@@ -1,6 +1,5 @@
-GIT
-  remote: https://github.com/stulentsev/mongoid-locker.git
-  revision: e44826ff68825495fd336a784e0fda68aea73fa8
+PATH
+  remote: ../textmaster-root/libraries/mongoid-locker
   specs:
     mongoid-locker (0.3.6)
       mongoid (>= 2.8)
