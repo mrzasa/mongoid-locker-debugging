@@ -48,6 +48,7 @@ PLATFORMS
 
 DEPENDENCIES
   awesome_print
+  mongo (= 2.5.1)
   mongoid (= 5.1.6)
   mongoid-locker!
   pry
