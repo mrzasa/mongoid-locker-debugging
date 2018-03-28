@@ -1,8 +1,7 @@
 require 'bundler/setup'
 Bundler.require(:default)
-Mongoid.load!('mongoid.yml', :development)
 
-require 'securerandom'
+Mongoid.load!('mongoid.yml', :development)
 
 class Lock
   include Mongoid::Document
@@ -25,7 +24,7 @@ class Lock
     lock.delete if lock.present?
   end
 
-  index({ ts: 1 }, { expire_after_seconds: 30 })
+  index({ ts: 1 }, { expire_after_seconds: 3 })
 end
 
 class ExternalLock
@@ -122,7 +121,7 @@ class Wallet
     end
     store_data(transaction.id)
     # update_rating
-    # increment_counter
+    increment_counter
     # bare_driver_inrement_counter
   end
 
@@ -142,10 +141,7 @@ class Wallet
       STDERR.puts "END #{Thread.current[:id]} lock: #{$lock_counter}".green
     end
     store_data(rand(120))
-  end
-
-  def simple_record_transaction(amonunt)
-
+    bare_driver_increment_counter
   end
 
   # failing for 50
@@ -165,176 +161,37 @@ class Wallet
   end
 
   # failing for 1000, ok for 500
-  def bare_driver_inrement_counter
+  def bare_driver_increment_counter
     self.class.collection.update_one({_id: id}, {"$inc" => {counter: 1}})
   end
 end
 
-
-def check(actual, expected, name)
-  if expected == actual
-    puts "#{name} is OK".green
-    true
-  else
-    puts "#{name} should be #{expected} but it is #{actual}.".red
-    false
+class LockerRunner
+  def initialize(lock_method)
+    @lock_method = lock_method
   end
-end
 
-class Raw
-  def db
+  require 'securerandom'
+
+  def init(params)
+    Wallet.lock_method = "with_#{params.fetch(:locking_method, @lock_method)}_lock"
+    wallet = Wallet.create!
+    wallet.external_lock.save!
+    wallet.id
+  end
+
+  def get_db_connection
     @db ||= Mongoid::Clients.default
   end
 
-  def create_wallet
-    db[:wallets].insert_one({balance: 0, data: []}).inserted_id
-  end
-
-  def add_transaction(wallet_id, amount)
-    acquire_lock(wallet_id)
-    $lock_counter = $lock_counter + 1
-    puts ["BEGIN", $lock_counter].to_s.blue
-
-    wallet_id = BSON::ObjectId(wallet_id)
-    balance = db[:wallets].find(_id: wallet_id).first[:balance]
-    db[:transactions].insert_one(wallet_id: wallet_id, amount: amount)
-    db[:wallets].update_one({_id: wallet_id}, {balance: balance + amount})
-
-    puts ["END", $lock_counter].to_s.blue
-  ensure
-    release_lock(wallet_id)
-  end
-
   def create_transaction(wallet_id, amount)
-    add_transaction(wallet_id, amount)
-    increment_counter(wallet_id)
+    w = Wallet.find(wallet_id)
+    w.record_transaction(amount)
   end
 
-  def increment_counter(wallet_id)
-    db[:wallets].update_one({_id: wallet_id}, {"$inc" => {counter: 1}})
+  def teardown
+    Mongoid.purge!
   end
-
-  def acquire_lock(id)
-    time = Time.now
-    expiration = time + 5
-    retry_limit = 2000
-    retry_count = 0
-    sleep_time = 0.5
-
-    loop do
-      locking_result = db[:wallets].update_one(
-        {
-          :_id => id,
-          '$or' => [
-            # not locked
-            { mongoid_locker_locked_until: nil },
-            # expired
-            { mongoid_locker_locked_until: { '$lte' => time } }
-          ]
-        },
-
-        '$set' => {
-          mongoid_locker_locked_at:    time,
-          mongoid_locker_locked_until: expiration
-        }
-      )
-      acquired_lock = locking_result.ok? && locking_result.documents.first['n'] == 1
-      retry_count += 1
-      break if acquired_lock
-      fail "Update failed on acquiring lock" unless locking_result.ok?
-      fail "Cannot acquire lock" if retry_count == retry_limit
-
-      sleep(sleep_time)
-    end
-  end
-
-  def release_lock(id)
-    unlocking_result = db[:wallets].update_one(
-      { _id: id },
-      '$set' => {
-         mongoid_locker_locked_at:    nil,
-         mongoid_locker_locked_until: nil,
-       }
-    )
-    fail "Update failed on releasing lock" unless unlocking_result.ok?
-  end
-end
-
-def concurrent_add_trasactions(wallet_id, number_of_transactions)
-  threads = []
-
-  STDERR.puts "========================= START THREADING ============================="
-  $lock_counter = 0
-  number_of_transactions.times do |i|
-    threads << Thread.new do
-      Thread.current[:id] = i
-      # split threads into 2 groups
-      sleep(i % 2)
-      # no exceptions, or expectations in the threads or join all will fail
-      begin
-        w = Wallet.find(wallet_id)
-        w.raw_record_transaction(10)
-        #check(w.balance, w.transactions.size * 10, "thread #{i}")
-      rescue StandardError => e
-        STDERR.puts e.to_s.red
-        end
-    end
-  end
-  threads.each(&:join)
-  STDERR.puts "============================ END THREADING =============================="
-end
-
-def raw_concurrent_add_trasactions(wallet_id, number_of_transactions)
-  threads = []
-
-  STDERR.puts "========================= START THREADING ============================="
-  $lock_counter = 0
-  number_of_transactions.times do |i|
-    threads << Thread.new do
-      Thread.current[:id] = i
-      # split threads into 2 groups
-      sleep(i % 2)
-      # no exceptions, or expectations in the threads or join all will fail
-      begin
-        Raw.new.create_transaction(wallet_id, 10)
-        #check(w.balance, w.transactions.size * 10, "thread #{i}")
-      #rescue StandardError => e
-      #  STDERR.puts e.to_s.red
-      end
-    end
-  end
-  threads.each(&:join)
-  STDERR.puts "============================ END THREADING =============================="
-end
-
-def raw_run_test(number_of_transactions)
-  wallet_id = db[:wallets].insert_one({balance: 0, data: []}).inserted_id
-
-  raw_concurrent_add_trasactions(wallet_id, number_of_transactions)
-
-  balance = db[:wallets].find(_id: wallet_id).first[:balance]
-  transactions_count = db[:transactions].find(wallet_id: wallet_id).count
-  check(transactions_count, number_of_transactions, "recorded transactions count")
-  check(balance, number_of_transactions*10, "balance")
-  check(wallet.counter, number_of_transactions, "counter")
-ensure
-
-end
-
-def run_test(number_of_transactions, lock_method)
-  puts [number_of_transactions, lock_method].to_s
-  Wallet.lock_method = lock_method
-  wallet = Wallet.create!
-  wallet.external_lock.save!
-
-  raw_concurrent_add_trasactions(wallet.id, number_of_transactions)
-  wallet.reload
-
-  check(wallet.transactions.count, number_of_transactions, "recorded transactions count")
-  check(wallet.balance, number_of_transactions*10, "balance")
-  # check(wallet.counter, number_of_transactions, "counter")
-ensure
-  Mongoid.purge!
 end
 
 def reload

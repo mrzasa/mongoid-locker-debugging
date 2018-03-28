@@ -7,3 +7,7 @@ gem 'mongo', '2.5.1'
 
 gem 'pry'
 gem 'awesome_print'
+
+group :test do
+  gem 'minitest'
+end

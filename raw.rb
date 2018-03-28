@@ -1,14 +1,16 @@
+require 'mongo'
 require 'securerandom'
 require 'pry'
 require 'awesome_print'
-require 'mongo'
-
-Mongo::Monitoring::CommandLogSubscriber::LOG_STRING_LIMIT = 2_000
-
+::Mongo::Monitoring::CommandLogSubscriber::LOG_STRING_LIMIT = 2_000
 
 class Raw
+  def initialize(runner)
+    @runner = runner
+  end
+
   def db
-    @db ||= get_db_connection
+    @db ||= @runner.get_db_connection
   end
 
   def create_wallet
@@ -93,73 +95,31 @@ class Raw
   end
 end
 
-def get_db_connection
-  $mongo ||= Mongo::Client.new(
-    'mongodb://127.0.0.1:27017/locker-raw-test',
-    connect_timeout: 100,
-    wait_queue_timeout: 100,
-    max_pool_size: 10000,
-  )
-end
-
-def check(actual, expected, name)
-  if expected == actual
-    puts "#{name} is OK".green
-    true
-  else
-    puts "#{name} should be #{expected} but it is #{actual}.".red
-    false
+class RawRunner
+  def initialize(*)
   end
-end
 
-def concurrent_add_trasactions(wallet_id, number_of_transactions)
-  threads = []
-
-  STDERR.puts "========================= START THREADING ============================="
-  $lock_counter = 0
-  number_of_transactions.times do |i|
-    threads << Thread.new do
-      Thread.current[:id] = i
-      # split threads into 2 groups
-      sleep(i % 2)
-      # no exceptions, or expectations in the threads or join all will fail
-      begin
-        Raw.new.create_transaction(wallet_id, 10)
-        #check(w.balance, w.transactions.size * 10, "thread #{i}")
-      #rescue StandardError => e
-      #  STDERR.puts e.to_s.red
-      end
-    end
+  def get_db_connection
+    $mongo ||= Mongo::Client.new(
+      'mongodb://127.0.0.1:27017/locker-raw-test',
+      connect_timeout: 300,
+      wait_queue_timeout: 300,
+      max_pool_size: 1000,
+    )
   end
-  threads.each(&:join)
-  STDERR.puts "============================ END THREADING =============================="
-end
 
-def run_test(number_of_transactions)
-  db = get_db_connection
-  wallet_id = db[:wallets].insert_one({balance: 0, counter: 0, data: []}).inserted_id
-  STDERR.puts ["created", db[:wallets].find(_id: wallet_id).first].to_s.yellow
+  def create_transaction(wallet_id, amount)
+    Raw.new(self).create_transaction(wallet_id, amount)
+  end
 
-  concurrent_add_trasactions(wallet_id, number_of_transactions)
+  def init(*)
+    db = get_db_connection
+    db[:wallets].insert_one({balance: 0, counter: 0, data: []}).inserted_id
+  end
 
-  wallet_data = db[:wallets].find(_id: wallet_id).first
-  balance = wallet_data[:balance]
-  counter = wallet_data[:counter]
-  transactions_count = db[:transactions].find(wallet_id: wallet_id).count
-  check(transactions_count, number_of_transactions, "recorded transactions count")
-  check(balance, number_of_transactions*10, "balance")
-  check(counter, number_of_transactions, "counter")
-ensure
-  db[:transactions].delete_many({})
-  db[:wallets].delete_many({})
-end
-
-if __FILE__ == $0
-  Mongo::Logger.logger = Logger.new(STDERR)
-  Mongo::Logger.logger.level = Logger::DEBUG
-
-  count = (ARGV[0] || 10).to_i
-  run_test(count)
-else
-  Mongo::Logger.logger.level = Logger::DEBUG
+  def teardown
+    db = get_db_connection
+    db[:transactions].delete_many({})
+    db[:wallets].delete_many({})
+  end
 end
