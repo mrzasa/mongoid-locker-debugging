@@ -42,6 +42,7 @@ def threaded_add_trasactions(runner, wallet_id, thread_count)
 end
 
 def run_test(runner, thread_count, process_count, params={})
+  puts "Runnner: #{runner}, threads:#{thread_count}, procs:#{process_count}, params:#{params}"
   wallet_id = runner.init(params)
   db = runner.get_db_connection
   STDERR.puts ["created", db[:wallets].find(_id: wallet_id).first].to_s.yellow
@@ -60,15 +61,28 @@ ensure
 end
 
 if __FILE__ == $0
-  Mongo::Logger.logger = Logger.new(STDERR)
-  Mongo::Logger.logger.level = Logger::DEBUG
+  #Mongo::Logger.logger = Logger.new(STDERR)
+  #Mongo::Logger.logger.level = Logger::DEBUG
+
+  if ARGV[0] == 'test'
+    # runners = [RawRunner.new, LockerRunner.new(:expirable)]
+    runners = [LockerRunner.new(:expirable)]
+    counts = [[1, 2], [1000, 1], [1500, 1], [500, 2], [600, 2], [100, 4], [500, 4]]
+    #counts  = [[10,1], [10, 2], [1,4]]
+
+    runners.each do |runner|
+      counts.each do |thread_count, process_count|
+        run_test(runner, thread_count, process_count)
+      end
+    end
+  end
 
   thread_count = (ARGV[0] || 10).to_i
   process_count = (ARGV[1] || 1).to_i
-  locking_method = ARGV[2]
-  mode = ARGV[3] || 'raw'
+  runner = ARGV[2] || 'raw'
+  locking_method = ARGV[3]
 
-  runner = "#{locking_method.capitalize}Runner".constantize.new(mode)
+  runner = "#{runner.capitalize}Runner".constantize.new(locking_method)
 
-  run_test(runner, thread_count, process_count, locking_method: mode)
+  run_test(runner, thread_count, process_count, locking_method: locking_method)
 end

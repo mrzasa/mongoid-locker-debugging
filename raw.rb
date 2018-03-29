@@ -17,6 +17,12 @@ class Raw
     db[:wallets].insert_one({balance: 0, data: []}).inserted_id
   end
 
+  def create_transaction(wallet_id, amount)
+    STDERR.puts ["before transaction", db[:wallets].find(_id: wallet_id).first].to_s.yellow
+    add_transaction(wallet_id, amount)
+    increment_counter(wallet_id)
+  end
+
   def add_transaction(wallet_id, amount)
     acquire_lock(wallet_id)
     $lock_counter = $lock_counter + 1
@@ -33,12 +39,6 @@ class Raw
   ensure
     release_lock(wallet_id)
     STDERR.puts ["lock released", db[:wallets].find(_id: wallet_id).first].to_s.yellow
-  end
-
-  def create_transaction(wallet_id, amount)
-    STDERR.puts ["before transaction", db[:wallets].find(_id: wallet_id).first].to_s.yellow
-    add_transaction(wallet_id, amount)
-    increment_counter(wallet_id)
   end
 
   def increment_counter(wallet_id)
@@ -97,6 +97,10 @@ end
 
 class RawRunner
   def initialize(*)
+  end
+
+  def to_s
+    "#{self.class.to_s}"
   end
 
   def get_db_connection

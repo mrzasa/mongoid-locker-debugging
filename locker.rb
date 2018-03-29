@@ -24,7 +24,7 @@ class Lock
     lock.delete if lock.present?
   end
 
-  index({ ts: 1 }, { expire_after_seconds: 3 })
+  index({ ts: 1 }, { expire_after_seconds: 1 })
 end
 
 class ExternalLock
@@ -56,11 +56,12 @@ class Wallet
   field :data, type: Hash, default: {}
   field :rating, type: Float, default: 0
   field :counter, type: Integer, default: 0
+  field :lock_counter, type: Integer, default: 100
 
   def with_expirable_lock
-    retry_limit = 2000
+    retry_limit = 20000
     retry_count = 0
-    sleep = 0.5
+    sleep = 0.4
     begin
       Lock.with_lock(id) do
         yield
@@ -164,11 +165,16 @@ class Wallet
   def bare_driver_increment_counter
     self.class.collection.update_one({_id: id}, {"$inc" => {counter: 1}})
   end
+
 end
 
 class LockerRunner
   def initialize(lock_method)
     @lock_method = lock_method
+  end
+
+  def to_s
+    "#{self.class.to_s}: lock_method=#{@lock_method}"
   end
 
   require 'securerandom'
@@ -212,5 +218,5 @@ if __FILE__ == $0
     run_test(count, lock_method)
   end
 else
-  Mongo::Logger.logger.level = Logger::DEBUG
+  # Mongo::Logger.logger.level = Logger::DEBUG
 end
