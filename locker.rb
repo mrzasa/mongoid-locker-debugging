@@ -58,6 +58,11 @@ class Wallet
   field :counter, type: Integer, default: 0
   field :lock_counter, type: Integer, default: 100
 
+  field :locked_at, type: Time
+  field :locked_until, type: Time
+
+  field :completed_at, type: Time
+
   def with_expirable_lock
     retry_limit = 20000
     retry_count = 0

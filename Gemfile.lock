@@ -1,17 +1,10 @@
-PATH
-  remote: ../textmaster-root/libraries/mongoid-locker
-  specs:
-    mongoid-locker (0.3.6)
-      mongoid (>= 2.8)
-      mongoid-compatibility (>= 0.4.1)
-
 GEM
   remote: http://rubygems.org/
   specs:
-    activemodel (4.2.10)
-      activesupport (= 4.2.10)
+    activemodel (4.2.11)
+      activesupport (= 4.2.11)
       builder (~> 3.1)
-    activesupport (4.2.10)
+    activesupport (4.2.11)
       i18n (~> 0.7)
       minitest (~> 5.1)
       thread_safe (~> 0.3, >= 0.3.4)
@@ -20,7 +13,7 @@ GEM
     bson (4.3.0)
     builder (3.2.3)
     coderay (1.1.2)
-    concurrent-ruby (1.0.5)
+    concurrent-ruby (1.1.4)
     i18n (0.9.5)
       concurrent-ruby (~> 1.0)
     method_source (0.9.0)
@@ -35,6 +28,9 @@ GEM
     mongoid-compatibility (0.5.1)
       activesupport
       mongoid (>= 2.0)
+    mongoid-locker (1.0.0)
+      mongoid (>= 2.8)
+      mongoid-compatibility (>= 0.4.1)
     origin (2.3.1)
     pry (0.11.3)
       coderay (~> 1.1.0)
@@ -51,8 +47,8 @@ DEPENDENCIES
   minitest
   mongo (= 2.5.1)
   mongoid (= 5.1.6)
-  mongoid-locker!
+  mongoid-locker
   pry
 
 BUNDLED WITH
-   1.16.1
+   1.16.2
