@@ -48,15 +48,10 @@ module Runners
 
       def record_transaction(amount)
         transaction = nil
-        STDERR.puts "#{Thread.current[:id]} recording transaction".red
         with_current_lock do
           reload
-          STDERR.puts "BEGIN #{Thread.current[:id]} lock: #{$lock_counter} <<< old balance=#{balance}".green
           transaction = self.transactions.create!(amount: amount)
-          STDERR.puts "transaction created #{Thread.current[:id]} lock: #{$lock_counter}".green
           refresh_balance(transaction)
-          STDERR.puts "balance refreshed #{Thread.current[:id]} lock: #{$lock_counter} >>> new balance=#{balance}".green
-          STDERR.puts "END #{Thread.current[:id]} lock: #{$lock_counter}".green
         end
         store_data(transaction.id)
         # various actions can be chosen here, each one has its own
@@ -131,9 +126,7 @@ module Runners
       has_one :external_lock, autobuild: true
 
       def init
-        STDERR.puts "#{Thread.current[:id]} saving external lock".green
         external_lock.save!
-        STDERR.puts "#{Thread.current[:id]} ExternalLock.count=#{ExternalLock.count}".green
       end
 
       def with_current_lock
@@ -174,7 +167,6 @@ module Runners
           if retry_count < retry_limit+1
             retry
           else
-            STDERR.puts '--- CANNOT OBTAIN LOCK'.red
             fail "cannot obtain lock"
           end
         end
