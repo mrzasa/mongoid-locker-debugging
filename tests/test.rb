@@ -1,6 +1,3 @@
-
-require_relative '../run.rb'
-
 module Test
   def setup
     @wallet_id = runner.init({})
@@ -37,5 +34,31 @@ module Test
     assert_equal(thread_count * process_count, transactions_count, "recorded transactions count")
     assert_equal(thread_count * process_count, counter, "counter")
     assert_equal(thread_count * process_count * 10, balance, "balance")
+  end
+
+  def concurrent_add_trasactions(runner, wallet_id, thread_count, process_count)
+    if process_count <= 1
+      threaded_add_trasactions(runner, wallet_id, thread_count)
+    else
+      process_count.times do |i|
+        Process.fork { sleep(i % 2); threaded_add_trasactions(runner, wallet_id, thread_count) }
+      end
+      Process.waitall
+    end
+  end
+
+  def threaded_add_trasactions(runner, wallet_id, thread_count)
+    threads = []
+
+    $lock_counter = 0
+    thread_count.times do |i|
+      threads << Thread.new do
+        Thread.current[:id] = i
+        # split threads into 2 groups
+        sleep(i % 2)
+        runner.create_transaction(wallet_id, 10)
+      end
+    end
+    threads.each(&:join)
   end
 end

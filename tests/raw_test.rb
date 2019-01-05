@@ -1,17 +1,17 @@
 require 'minitest/autorun'
 require_relative 'test'
-require_relative '../raw.rb'
+require_relative '../runners/raw.rb'
 
 class RawTest < MiniTest::Test
   include Test
 
   def setup
-    @thread_count = 500
+    @thread_count = 5
     @process_count = 4
     super
   end
 
   def create_runner
-    RawRunner.new
+    Runners::RawRunner.new
   end
 end
