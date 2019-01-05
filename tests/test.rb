@@ -21,8 +21,10 @@ module Test
   def test_transaction_creation
     db = runner.get_db_connection
 
-    thread_count = (ENV['THREAD_COUNT'] || 10).to_i
-    process_count = (ENV['PROCESS_COUNT'] || 2).to_i
+    thread_count = (@thread_count || ENV['THREAD_COUNT'] || 10).to_i
+    process_count = (@process_count || ENV['PROCESS_COUNT'] || 2).to_i
+
+    puts "== threads: #{thread_count}, processes: #{process_count}".green
 
     concurrent_add_trasactions(runner, @wallet_id, thread_count, process_count)
 
@@ -31,8 +33,9 @@ module Test
     counter = wallet_data[:counter]
     transactions_count = db[:transactions].find(wallet_id: @wallet_id).count
 
+    puts "== threads: #{thread_count}, processes: #{process_count}".green
     assert_equal(thread_count * process_count, transactions_count, "recorded transactions count")
-    assert_equal(thread_count * process_count * 10, balance, "balance")
     assert_equal(thread_count * process_count, counter, "counter")
+    assert_equal(thread_count * process_count * 10, balance, "balance")
   end
 end

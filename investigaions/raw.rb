@@ -50,13 +50,13 @@ class Raw
   end
 
   def acquire_lock(id)
-    time = Time.now
+    time = db.command({ serverStatus: 1 }).to_a.first["localTime"] # Time.now
     expiration = time + 5
     retry_limit = 500
     retry_count = 0
     sleep_time = 0.5
-
     loop do
+
       locking_result = db[:wallets].update_one(
         {
           :_id => id,
