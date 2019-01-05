@@ -6,6 +6,8 @@ class MongoidLockerExternalTest < MiniTest::Test
   include Test
 
   def setup
+    @thread_count = 500
+    @process_count = 4
     super
   end
 

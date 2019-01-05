@@ -32,6 +32,7 @@ module Test
 
     puts "== threads: #{thread_count}, processes: #{process_count}".green
     assert_equal(thread_count * process_count, transactions_count, "recorded transactions count")
+
     assert_equal(thread_count * process_count, counter, "counter")
     assert_equal(thread_count * process_count * 10, balance, "balance")
   end
@@ -41,7 +42,6 @@ module Test
       threaded_add_trasactions(runner, wallet_id, thread_count)
     else
       process_count.times do |i|
-        puts "=> process #{i}".blue
         Process.fork { sleep(i % 2); threaded_add_trasactions(runner, wallet_id, thread_count) }
       end
       Process.waitall
@@ -56,10 +56,8 @@ module Test
       threads << Thread.new do
         Thread.current[:id] = i
         # split threads into 2 groups
-        puts "===> thread #{i}".blue
         sleep(i % 2)
         runner.create_transaction(wallet_id, 10)
-        puts "<=== thread #{i}".blue
       end
     end
     threads.each(&:join)
