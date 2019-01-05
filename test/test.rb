@@ -41,6 +41,7 @@ module Test
       threaded_add_trasactions(runner, wallet_id, thread_count)
     else
       process_count.times do |i|
+        puts "=> process #{i}".blue
         Process.fork { sleep(i % 2); threaded_add_trasactions(runner, wallet_id, thread_count) }
       end
       Process.waitall
@@ -55,8 +56,10 @@ module Test
       threads << Thread.new do
         Thread.current[:id] = i
         # split threads into 2 groups
+        puts "===> thread #{i}".blue
         sleep(i % 2)
         runner.create_transaction(wallet_id, 10)
+        puts "<=== thread #{i}".blue
       end
     end
     threads.each(&:join)
