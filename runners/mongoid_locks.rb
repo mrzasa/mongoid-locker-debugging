@@ -53,10 +53,11 @@ module Runners
           transaction = self.transactions.create!(amount: amount)
           refresh_balance(transaction)
         end
-        store_data(transaction.id)
         # various actions can be chosen here, each one has its own
         # failure threshold (number of threads) described as action comment
-        #update_rating
+        store_data(transaction.id)
+        store_data(transaction.id)
+        store_data(transaction.id)
         increment_counter
         #bare_driver_inrement_counter
       end
