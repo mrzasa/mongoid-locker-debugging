@@ -5,6 +5,8 @@ to enter a critical section. We noticed that it happens when a locked record is 
 both inside and outside the lock.
 This repository is a [MCVE](https://stackoverflow.com/help/mcve) for this bug.
 
+The bug has been reported in [mongodb](https://jira.mongodb.org/browse/RUBY-1645) and [mongoid-locker](https://github.com/mongoid/mongoid-locker/issues/76) trackers.
+
 ## Test scenario
 
 `Wallet` model has multiple `Transactions`. When a transaction is added to a wallet, `Wallet#balance` should
